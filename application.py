@@ -1,10 +1,9 @@
 import streamlit as st
 import cv2
 from ultralytics import YOLO
-import tempfile
 import os
 from collections import defaultdict
-import numpy as np
+import numpy as np 
 
 def main():
     st.set_page_config(page_title="Segmentation AI model", layout="wide")
@@ -18,11 +17,12 @@ def main():
     uploaded_file = st.sidebar.file_uploader("เลือกไฟล์ภาพ...", type=["jpg", "jpeg", "png"])
 
     if uploaded_file is not None:
-
-        tfile = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
-        tfile.write(uploaded_file.read())
+        # 1. อ่านไฟล์ภาพจาก Streamlit เข้าหน่วยความจำโดยตรง
+        file_bytes = np.frombuffer(uploaded_file.read(), np.uint8)
+        img = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+        
+        # 2. เรียกใช้งานโมเดล YOLO
         model = YOLO(model_path)
-        img = cv2.imread(tfile.name)
         
         st.sidebar.info("กำลังประมวลผลภาพ (Segmenting)...")
         results = model(img)
@@ -30,7 +30,6 @@ def main():
         res_plotted = results[0].plot()
         res_rgb = cv2.cvtColor(res_plotted, cv2.COLOR_BGR2RGB)
         label_count = defaultdict(int)
-
         if results[0].boxes:
             for box in results[0].boxes:
                 cls = int(box.cls[0])
@@ -46,12 +45,6 @@ def main():
             st.write("ไม่พบวัตถุที่สนใจในภาพ")
 
         st.success("Segmentation Completed!")
-
-        try:
-            tfile.close()
-            os.unlink(tfile.name)
-        except Exception as e:
-            st.error(f"เกิดข้อผิดพลาดในการลบไฟล์ชั่วคราว: {e}")
 
 if __name__ == "__main__":
     main()
